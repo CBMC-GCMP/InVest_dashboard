@@ -1,0 +1,488 @@
+---
+title: "Blue Carbon InVest"
+resource_files:
+  #Magdalena Bay 
+- "data/InVest/Magdalena_Bay/Mangroves/SHP/Ejidos.dbf" 
+- "data/InVest/Magdalena_Bay/Mangroves/SHP/Ejidos.cpg"
+- "data/InVest/Magdalena_Bay/Mangroves/SHP/Ejidos.prj"
+- "data/InVest/Magdalena_Bay/Mangroves/SHP/Ejidos.sbn"
+- "data/InVest/Magdalena_Bay/Mangroves/SHP/Ejidos.sbx"
+- "data/InVest/Magdalena_Bay/Mangroves/SHP/Ejidos.shx" 
+
+- "data/InVest/Magdalena_Bay/Mangroves/SHP/Pronatura_Properties.dbf" 
+- "data/InVest/Magdalena_Bay/Mangroves/SHP/Pronatura_Properties.cpg"
+- "data/InVest/Magdalena_Bay/Mangroves/SHP/Pronatura_Properties.prj"
+- "data/InVest/Magdalena_Bay/Mangroves/SHP/Pronatura_Properties.sbn"
+- "data/InVest/Magdalena_Bay/Mangroves/SHP/Pronatura_Properties.sbx"
+- "data/InVest/Magdalena_Bay/Mangroves/SHP/Pronatura_Properties.shx"
+ 
+ 
+ #San Quintin
+- "data/InVest/San_Quintin/Protection_polygons/ADVC.dbf" 
+- "data/InVest/San_Quintin/Protection_polygons/ADVC.prj"
+- "data/InVest/San_Quintin/Protection_polygons/ADVC.shx"
+
+- "data/InVest/San_Quintin/Protection_polygons/ramsar_site_sq.dbf" 
+- "data/InVest/San_Quintin/Protection_polygons/ramsar_site_sq.prj"
+- "data/InVest/San_Quintin/Protection_polygons/ramsar_site_sq.shx"
+output: 
+  flexdashboard::flex_dashboard: 
+    orientation: row
+    vertical_layout: fill
+    theme: 
+      version: 4
+      bg: "#d0f7d7"
+      fg: "#000000"
+
+      primary: "#00540d"
+      navbar-bg: "#03DAC5"
+      base_font: 
+        google: Prompt
+      heading_font:
+        google: Sen
+      code_font:
+        google: 
+          # arguments to sass::font_google() 
+          family: JetBrains Mono
+          local: false
+    source_code: embed 
+    runtime: shiny 
+---
+```{r setup, include=FALSE, results='hide'}
+library(flexdashboard)
+library(leaflet)
+library(mapview)
+library(rgdal)
+library(sf)
+library(tidyverse)
+library(ggthemes)
+library(lubridate)
+library(raster)
+library(shiny)
+library(openair)
+library(shinythemes)
+library(ggplot2)
+library(rmarkdown)
+library(RColorBrewer)
+library(janitor)
+
+```
+
+
+
+
+
+Magdalena Bay
+=======================================================================
+        
+```{r  include=FALSE, results='hide'}
+
+
+
+# Loading InVest blue carbon----
+
+cs2020 <- raster("data/InVest/Magdalena_Bay/Mangroves/Outputs/carbon-stock-at-2020_3.1.tif")
+cs2020 <- mask(cs2020, cs2020, maskvalue=0)
+
+mapview::mapview(cs2020)
+
+
+cs2050 <- raster("data/InVest/Magdalena_Bay/Mangroves/Outputs/carbon-stock-at-2050_3.1.tif")
+
+cs2050 <- mask(cs2050, cs2050, maskvalue=0)
+
+
+
+csq <- raster("data/InVest/Magdalena_Bay/Mangroves/Outputs/Total net carbon sequestration 1981 - 2050_ Annual rate.tif")
+
+csq <- mask(csq, csq, maskvalue=0)
+
+
+
+
+
+
+
+# Loading Protection Polygons -------------------
+ejidos <- raster::shapefile("data/InVest/Magdalena_Bay/Mangroves/SHP/Ejidos.shp", encoding = "UTF-8", verbose = FALSE)
+pronatura <- raster::shapefile("data/InVest/Magdalena_Bay/Mangroves/SHP/Pronatura_Properties.shp", encoding = "UTF-8", verbose = FALSE)
+
+```
+
+
+
+```{r}
+
+
+ejidos$labels1 <- paste0("<h3 style= 'background-color:#737373; color: white; text-align: center; font-size: 150%; font-family:Times New Roman'> EJIDOS </h3>", 
+                      "<b style= 'color:#000000'> Nombre: </b> ", ejidos$NOMBRE, "<br/> ") %>% lapply(htmltools::HTML)
+
+
+pronatura$labels2 <- paste0("<h3 style= 'background-color:#a200ff; color: white; text-align: center; font-size: 150%; font-family:Times New Roman'> PRONATURA </h3>", 
+                      "<b style= 'color:#000000'> Nombre: </b> ", pronatura$NOMBRE, "<br/> ") %>% lapply(htmltools::HTML)
+
+
+
+cs1 <- colorNumeric(c("white" , "lightgreen", "darkgreen" ), values(cs2020),
+                    na.color = "transparent")
+
+cs2 <- colorNumeric(c("white" , "lightgreen", "darkgreen" ), values(cs2050),
+                    na.color = "transparent")
+
+csq1 <- colorNumeric(c("darkred" ,  "yellow", "darkgreen" ), values(csq),
+                    na.color = "transparent")
+# 
+# csq2 <- colorNumeric(c("darkred" ,  "yellow", "darkgreen" ), values(csq),
+#                     na.color = "transparent")
+
+
+
+
+
+leaflet() %>%
+        # addProviderTiles(providers$Esri.WorldImagery, group = "Satellite") %>%
+  addProviderTiles(providers$Esri.WorldImagery, group = "Satellite") %>%
+  
+          addPolygons(
+                data = ejidos,
+                group = "Ejidos",
+                weight = 2,
+                opacity = 0.5,
+
+                fillColor = NA,
+                fillOpacity = 0.1,
+                color = "Black",
+                dashArray = "2",
+                highlightOptions = highlightOptions(
+                        color = "Red",
+                        weight = 1,
+                        bringToFront = TRUE
+                )
+               , popup = ~ labels1,
+        ) %>%
+   addPolygons(
+                data = pronatura,
+                group = "PRONATURA",
+                weight = 2,
+                opacity = 1,
+
+                fillColor = NA,
+                fillOpacity = 0.3,
+                color = "#a200ff",
+                popup = ~ labels2
+                # dashArray = "2",
+
+        ) %>%
+  
+  addRasterImage(cs2020, colors=cs1 , opacity = 1, layerId = 1, group="Carbon Stock 2020") %>%
+  addRasterImage(cs2050, colors= cs2, opacity = 1, layerId = 1, group="Carbon Stock 2050") %>%
+  # addRasterImage(csq2050, colors= csq1, opacity = 1, layerId = 1, group="Total Net Carbon Sequestration 2020-2050") %>%
+  addRasterImage(csq, colors= csq1, opacity = 1, layerId = 1, group="Total Net Carbon Sequestration 1981-2050") %>%
+
+  
+  
+
+  addLegend(pal=cs1, values=values(cs2020), title="Carbon Stock 2020", position = "topright" ) %>%
+  addLegend(pal=cs2, values=values(cs2050), title="Carbon Stock 2050", position="bottomright") %>%
+
+  # addLegend(pal=csq1, values=values(csq2050), title="Total Net Carbon Sequestration 2020-2050", position="topleft" ) %>%
+    addLegend(pal=csq1, values=values(csq), title="Total Net Carbon Sequestration 1981-2050 (Annual Rate)", position="bottomleft" ) %>%
+
+
+        addLayersControl(
+                
+                overlayGroups = c("Ejidos",
+                                  "PRONATURA",
+                                  "Carbon Stock 2020",
+                                  "Carbon Stock 2050",
+                                  # "Total Net Carbon Sequestration 2020-2050",
+                                  "Total Net Carbon Sequestration 1981-2050"
+                                  
+                                  
+),
+                options = layersControlOptions(collapsed = TRUE)
+        ) %>%
+          hideGroup(c("Carbon Stock 2050",
+                                  # "Total Net Carbon Sequestration 2020-2050",
+                                  "Total Net Carbon Sequestration 1981-2050"
+                      )) %>%
+        
+        setView(lng = -112,
+                lat = 24.6,
+                zoom = 8.5) 
+```
+
+San Quintin Salt Marshes
+=======================================================================
+
+```{r}
+
+# Loading InVest blue carbon----
+
+cs2018 <- raster("data/InVest/San_Quintin/Marsh/Outputs/carbon-stock-at-2018_M.UTM.tif")
+
+cs2018 <- mask(cs2018, cs2018, maskvalue=0)
+
+
+
+
+cs2050 <- raster("data/InVest/San_Quintin/Marsh/Outputs/carbon-stock-at-2050_M.UTM.tif")
+
+cs2050 <- mask(cs2050, cs2050, maskvalue=0)
+
+
+
+csq <- raster("data/InVest/San_Quintin/Marsh/Outputs/Total_net_carbon_sequ_AR_adj.tif")
+
+csq <- mask(csq, csq, maskvalue=0)
+
+# Loading Protection Polygons -------------------
+ramsar <- raster::shapefile("data/InVest/San_Quintin/Protection_polygons/ramsar_site_sq.shp", encoding = "UTF-8", verbose = FALSE)
+advc <- raster::shapefile("data/InVest/San_Quintin/Protection_polygons/ADVC.shp", encoding = "UTF-8", verbose = FALSE)
+
+
+
+```
+
+```{r}
+
+advc$labels1 <- paste0("<h3 style= 'background-color:#a200ff; color: white; text-align: center; font-size: 150%; font-family:Times New Roman'> ADVC </h3>", 
+                      "<b style= 'color:#000000'> Nombre: </b> ", advc$NOM_PREDIO, "<br/> ")
+
+
+
+
+cs1 <- colorNumeric(c("white" , "lightgreen", "darkgreen" ), c(0,1800),
+                    na.color = "transparent")
+
+
+cs2 <- colorNumeric(c("white" , "lightgreen", "darkgreen" ),c(0,1800) ,
+                    na.color = "transparent")
+
+csq1 <- colorNumeric(c("darkred" ,  "yellow", "darkgreen" ), values(csq),
+                    na.color = "transparent")
+# 
+# csq2 <- colorNumeric(c("darkred" ,  "yellow", "darkgreen" ), values(csq),
+#                     na.color = "transparent")
+
+
+
+
+
+leaflet() %>%
+        # addProviderTiles(providers$Esri.WorldImagery, group = "Satellite") %>%
+  addProviderTiles(providers$Esri.WorldImagery, group = "Satellite") %>%
+  
+          addPolygons(
+                data = ramsar,
+                group = "Ramsar site",
+                weight = 2,
+                opacity = 0.5,
+
+                fillColor = NA,
+                fillOpacity = 0.1,
+                color = "yellow",
+                dashArray = "2"
+        ) %>%
+   addPolygons(
+                data = advc,
+                group = "ADVC",
+                weight = 2,
+                opacity = 1,
+
+                fillColor = NA,
+                fillOpacity = 0.3,
+                color = "#a200ff",
+                popup = ~ labels1
+                # dashArray = "2",
+
+        ) %>%
+  
+  addRasterImage(cs2018, colors=cs1 , opacity = 1, layerId = 1, group="Carbon Stock 2018") %>%
+  addRasterImage(cs2050, colors= cs2, opacity = 1, layerId = 1, group="Carbon Stock 2050") %>%
+  # addRasterImage(csq2050, colors= csq1, opacity = 1, layerId = 1, group="Total Net Carbon Sequestration 2020-2050") %>%
+  addRasterImage(csq, colors= csq1, opacity = 1, layerId = 1, group="Total Net Carbon Sequestration 1991-2050") %>%
+
+  
+  
+
+  addLegend(pal=cs1, values=c(0,1800), title="Carbon Stock 2018", position = "topright" ) %>%
+  addLegend(pal=cs2, values=c(0,1800), title="Carbon Stock 2050", position="bottomright") %>%
+
+  # addLegend(pal=csq1, values=values(csq2050), title="Total Net Carbon Sequestration 2020-2050", position="topleft" ) %>%
+    addLegend(pal=csq1, values=values(csq), title="Total Net Carbon Sequestration 1991-2050 (Annual Rate)", position="bottomleft" ) %>%
+
+
+        addLayersControl(
+                
+                overlayGroups = c("Ramsar site",
+                                 
+                                  "Carbon Stock 2018",
+                                  "Carbon Stock 2050",
+                                  # "Total Net Carbon Sequestration 2020-2050",
+                                  "Total Net Carbon Sequestration 1991-2050",
+                                   "ADVC"
+                                  
+                                  
+),
+                options = layersControlOptions(collapsed = TRUE)
+        ) %>%
+          hideGroup(c("Carbon Stock 2050",
+                                  # "Total Net Carbon Sequestration 2020-2050",
+                                  "Total Net Carbon Sequestration 1991-2050"
+                      )) %>%
+        
+        setView(lng = -116,
+                lat = 30.4,
+                zoom = 12) 
+
+```
+
+San Quintin Seagrass
+=======================================================================
+
+```{r}
+
+# Loading InVest blue carbon----
+
+cs2019 <- raster("data/InVest/San_Quintin/Seagrasses/Outputs/carbon-stock-at-2019_P.UTM.tif")
+cs2019 <- mask(cs2019, cs2019, maskvalue=0)
+
+
+
+
+cs2050 <- raster("data/InVest/San_Quintin/Seagrasses/Outputs/carbon-stock-at-2050_P.UTM.tif")
+
+cs2050 <- mask(cs2050, cs2050, maskvalue=0)
+
+
+
+csq <- raster("data/InVest/San_Quintin/Seagrasses/Outputs/total-net-carbon-sequestration_AR-P.tif")
+
+csq <- mask(csq, csq, maskvalue=0)
+
+# Loading Protection Polygons -------------------
+ramsar <- raster::shapefile("data/InVest/San_Quintin/Protection_polygons/ramsar_site_sq.shp", encoding = "UTF-8", verbose = FALSE)
+advc <- raster::shapefile("data/InVest/San_Quintin/Protection_polygons/ADVC.shp", encoding = "UTF-8", verbose = FALSE)
+
+
+
+```
+
+```{r}
+
+advc$labels1 <- paste0("<h3 style= 'background-color:#a200ff; color: white; text-align: center; font-size: 150%; font-family:Times New Roman'> ADVC </h3>", 
+                      "<b style= 'color:#000000'> Nombre: </b> ", advc$NOM_PREDIO, "<br/> ")
+
+
+
+
+cs1 <- colorNumeric(c("white" , "lightgreen", "darkgreen" ), c(0, 260),
+                    na.color = "transparent")
+
+cs2 <- colorNumeric(c("white" , "lightgreen", "darkgreen" ), c(0, 260),
+                    na.color = "transparent")
+
+csq1 <- colorNumeric(c("darkred" ,  "yellow", "darkgreen" ), values(csq),
+                    na.color = "transparent")
+# 
+# csq2 <- colorNumeric(c("darkred" ,  "yellow", "darkgreen" ), values(csq),
+#                     na.color = "transparent")
+
+
+
+
+
+leaflet() %>%
+        # addProviderTiles(providers$Esri.WorldImagery, group = "Satellite") %>%
+  addProviderTiles(providers$Esri.WorldImagery, group = "Satellite") %>%
+  
+          addPolygons(
+                data = ramsar,
+                group = "Ramsar site",
+                weight = 2,
+                opacity = 0.5,
+
+                fillColor = NA,
+                fillOpacity = 0.1,
+                color = "yellow",
+                dashArray = "2"
+        ) %>%
+   addPolygons(
+                data = advc,
+                group = "ADVC",
+                weight = 2,
+                opacity = 1,
+
+                fillColor = NA,
+                fillOpacity = 0.3,
+                color = "#a200ff",
+                popup = ~ labels1
+                # dashArray = "2",
+
+        ) %>%
+  
+  addRasterImage(cs2019, colors=cs1 , opacity = 1, layerId = 1, group="Carbon Stock 2019") %>%
+  addRasterImage(cs2050, colors= cs2, opacity = 1, layerId = 1, group="Carbon Stock 2050") %>%
+  # addRasterImage(csq2050, colors= csq1, opacity = 1, layerId = 1, group="Total Net Carbon Sequestration 2020-2050") %>%
+  addRasterImage(csq, colors= csq1, opacity = 1, layerId = 1, group="Total Net Carbon Sequestration 1999-2050") %>%
+
+  
+  
+
+  addLegend(pal=cs1, values=c(0, 260), title="Carbon Stock 2019", position = "topright" ) %>%
+  addLegend(pal=cs2, values=c(0, 260), title="Carbon Stock 2050", position="bottomright") %>%
+
+  # addLegend(pal=csq1, values=values(csq2050), title="Total Net Carbon Sequestration 2020-2050", position="topleft" ) %>%
+    addLegend(pal=csq1, values=values(csq), title="Total Net Carbon Sequestration 1999-2050 (Annual Rate)", position="bottomleft" ) %>%
+
+
+        addLayersControl(
+                
+                overlayGroups = c("Ramsar site",
+                                 
+                                  "Carbon Stock 2019",
+                                  "Carbon Stock 2050",
+                                  # "Total Net Carbon Sequestration 2020-2050",
+                                  "Total Net Carbon Sequestration 1999-2050",
+                                   "ADVC"
+                                  
+                                  
+),
+                options = layersControlOptions(collapsed = TRUE)
+        ) %>%
+          hideGroup(c("Carbon Stock 2050",
+                                  # "Total Net Carbon Sequestration 2020-2050",
+                                  "Total Net Carbon Sequestration 1999-2050"
+                      )) %>%
+        
+        setView(lng = -116,
+                lat = 30.4,
+                zoom = 12) 
+
+```
+
+About
+=======================================================================
+row
+----------------------------------------------
+
+
+### InVEST Coastal Blue Carbon
+
+Methodology adapted by the Centro para la Biodiversidad Marina y la Conservación A.C. (CBMC)
+
+### The model
+
+The InVEST model for Coastal Blue Carbon aims to predict the amount of carbon stored and sequestered within a coastal area in a given time, considering the changes in the vegetation cover. The model compares current and future carbon storage and net sequestration scenarios by analyzing the change in habitat cover and land use over time. Areas that are degraded or are under degradation can be highlighted to guide future management actions to preserve and improve carbon storage and sequestration. The methodology consists of two stages: preprocessor and processor. 
+
+
+### NOTES:
+
+• The model suggests the use of land use maps that distinguish between species, because in the case of mangroves and seagrasses, the accumulation rates can vary with respect to the species.
+
+• Because in salt marshes the contribution of carbon from biomass is extremely low, it can be excluded from the model without affecting the results.
+
+• Litter also has a very low carbon accumulation rate, so the lack of this information does not significantly alter the results.
+
+
